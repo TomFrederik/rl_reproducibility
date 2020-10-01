@@ -119,7 +119,7 @@ class actor:
         return kl
 
 
-class dummy_cont_child(actor):
+class dummy_cont(actor):
     '''
     dummy child class to showcase how to use the actor parent class for continuous control
     '''
@@ -129,7 +129,7 @@ class dummy_cont_child(actor):
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
         # init parent class and set dist type, e.g. univariate normal distribution
-        super(dummy_cont_child, self).__init__(torch.distributions.normal.Normal)
+        super(dummy_cont, self).__init__(torch.distributions.normal.Normal)
 
         #####
         # some more initialization, depending on the specific method 
@@ -154,7 +154,7 @@ class dummy_cont_child(actor):
         return params
 
 
-class dummy_discrete_child(actor):
+class dummy_discrete(actor):
     '''
     dummy child class to showcase how to use the actor parent class for discrete control.
 
@@ -166,7 +166,7 @@ class dummy_discrete_child(actor):
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
         # init parent class and set dist type, e.g. univariate normal distribution
-        super(dummy_discrete_child, self).__init__(torch.distributions.categorical.Categorical)
+        super(dummy_discrete, self).__init__(torch.distributions.categorical.Categorical)
 
         #####
         # some more initialization, depending on the specific method 
