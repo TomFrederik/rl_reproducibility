@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-class actor:
+class Actor:
     """
     Parent class for policies.
     Child classes need to specify the forward module and the type of distribution
@@ -122,7 +122,7 @@ class actor:
         return kl
 
 
-class dummy_cont(actor):
+class DummyCont(Actor):
     '''
     dummy child class to showcase how to use the actor parent class for continuous control
     '''
@@ -132,7 +132,7 @@ class dummy_cont(actor):
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
         # init parent class and set dist type, e.g. univariate normal distribution
-        super(dummy_cont, self).__init__(torch.distributions.normal.Normal)
+        super().__init__(torch.distributions.normal.Normal)
 
         #####
         # some more initialization, depending on the specific method 
@@ -157,7 +157,7 @@ class dummy_cont(actor):
         return params
 
 
-class dummy_discrete(actor):
+class DummyDiscrete(Actor):
     '''
     dummy child class to showcase how to use the actor parent class for discrete control.
 
@@ -169,7 +169,7 @@ class dummy_discrete(actor):
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
         # init parent class and set dist type, e.g. univariate normal distribution
-        super(dummy_discrete, self).__init__(torch.distributions.categorical.Categorical)
+        super().__init__(torch.distributions.categorical.Categorical)
 
         #####
         # some more initialization, depending on the specific method 

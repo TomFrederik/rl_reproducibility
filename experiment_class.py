@@ -1,7 +1,7 @@
 import torch
 import actor as act
 
-class experiment:
+class Experiment:
 
     def __init__(self, ac, ac_kwargs, train_alg, alg_kwargs, v=None, v_kwargs=None):
         '''
