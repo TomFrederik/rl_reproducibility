@@ -13,7 +13,7 @@ class actor:
             dist_type - torch distribution class
         '''
         
-        if (self.dist_type != torch.distributions.normal.Normal) & (self.dist_type != torch.distributions.categorical.Categorical):
+        if (dist_type != torch.distributions.normal.Normal) & (dist_type != torch.distributions.categorical.Categorical):
             print('WARNING! Expected Normal or Categorical distribution, but got {}! Might lead to unintended behavior.'.format(dist_type))
         
         self.dist_type = dist_type
