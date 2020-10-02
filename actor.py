@@ -1,7 +1,8 @@
 import numpy as np
 import torch
+import torch.nn as nn
 
-class Actor:
+class Actor(nn.Module):
     """
     Parent class for policies.
     Child classes need to specify the forward module and the type of distribution
@@ -12,7 +13,7 @@ class Actor:
         Input:
             dist_type - torch distribution class
         '''
-        
+        super().__init__()
         if (dist_type != torch.distributions.normal.Normal) & (dist_type != torch.distributions.categorical.Categorical):
             print('WARNING! Expected Normal or Categorical distribution, but got {}! Might lead to unintended behavior.'.format(dist_type))
         

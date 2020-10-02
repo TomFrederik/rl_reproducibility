@@ -1,5 +1,41 @@
 import torch
-import math
+import numpy as np
+from collections import deque
+
+
+def sample_memory(env, actor, num_episodes, render=False):
+    """Sample episodes from an environment using an Actor to select actions.
+
+    Returned memory has at least num_steps steps but usually has a few more because
+    we sample until the episode is finished.
+
+    If an episode takes more than 10000 steps, it is stopped at that point.
+    For environments with really long episodes, we may need another method."""
+    actor.eval()
+    memory = []
+
+    steps = 0
+    for i in range(num_episodes):
+        state = env.reset()
+        done = False
+        while not done:
+            # not entirely sure what this does, I think it normalizes and clips the state values?
+            #state = running_state(state)
+            action = actor.sample_action(torch.Tensor(state).unsqueeze(0)).item()
+            next_state, reward, done, _ = env.step(action)
+            if render:
+                env.render()
+            #next_state = running_state(next_state)
+
+            if done:
+                mask = 0
+            else:
+                mask = 1
+
+            memory.append((state, action, reward, mask))
+
+            state = next_state
+    return [torch.tensor(xs) for xs in zip(*memory)]
 
 
 def flat_grad(grads):

@@ -1,12 +1,11 @@
 import numpy as np
 import torch
 import utils
-from hparams import HyperParams as hp
 
 
 class TargetAlgorithm:
-    def __init__(self):
-        pass
+    def __init__(self, gamma=1):
+        self.gamma = gamma
 
     def train(self, memory):
         pass
@@ -19,35 +18,35 @@ class ActorOnlyMC(TargetAlgorithm):
     """No critic, targets are simply sampled returns (REINFORCE targets)"""
 
     def targets(self, memory):
-        memory = np.array(memory)
-        rewards = list(memory[:, 2])
-        masks = list(memory[:, 3])
+        rewards = memory[2]
+        masks = memory[3]
 
-        return get_returns(rewards, masks)
+        return get_returns(rewards, masks, self.gamma)
 
 
 class BaselineCriticMC(TargetAlgorithm):
     """Baseline state value function learned by a critic is subtracted."""
 
-    def __init__(self, critic, critic_optim):
+    def __init__(self, critic, critic_optim, gamma=1, batch_size=16):
+        super().__init__(gamma)
         self.critic = critic
         self.optim = critic_optim
+        self.batch_size = batch_size
 
     def targets(self, memory):
-        memory = np.array(memory)
-        states = np.vstack(memory[:, 0])
-        rewards = list(memory[:, 2])
-        masks = list(memory[:, 3])
+        states = memory[0]
+        rewards = memory[2]
+        masks = memory[3]
 
-        return get_returns(rewards, masks) - self.critic(states)
+        return get_returns(rewards, masks, self.gamma) - self.critic(states)
 
     def train(self, memory):
-        memory = np.array(memory)
-        rewards = list(memory[:, 2])
-        masks = list(memory[:, 3])
-        states = np.vstack(memory[:, 0])
+        self.critic.train()
+        rewards = memory[2]
+        masks = memory[3]
+        states = memory[0]
 
-        returns = get_returns(rewards, masks)
+        returns = get_returns(rewards, masks, self.gamma)
 
         criterion = torch.nn.MSELoss()
         n = len(states)
@@ -56,8 +55,8 @@ class BaselineCriticMC(TargetAlgorithm):
         for epoch in range(5):
             np.random.shuffle(arr)
 
-            for i in range(n // hp.batch_size):
-                batch_index = arr[hp.batch_size * i: hp.batch_size * (i + 1)]
+            for i in range(n // self.batch_size):
+                batch_index = arr[self.batch_size * i: self.batch_size * (i + 1)]
                 batch_index = torch.LongTensor(batch_index)
                 inputs = torch.Tensor(states)[batch_index]
                 target = returns.unsqueeze(1)[batch_index]
@@ -70,16 +69,18 @@ class BaselineCriticMC(TargetAlgorithm):
 
 
 class ActorAlgorithm:
-    def __init__(self, target_alg):
+    def __init__(self, actor, target_alg):
         self.target_alg = target_alg
+        self.actor = actor
 
     def get_loss(self, returns, states, actions, *args, **kwargs):
-        log_policy = self.actor.get_log_probs(states, actions)
-        return returns * log_policy
+        log_policy = self.actor.get_log_probs(states.float(), actions)
+        losses = returns * log_policy
+        return losses.mean()
 
     def fisher_vector_product(self, states, p):
         p.detach()
-        kl = self.actor.get_kl(states)
+        kl = self.actor.get_kl(states.float())
         kl_grad = torch.autograd.grad(kl, self.actor.parameters(), create_graph=True)
         kl_grad = utils.flat_grad(kl_grad)  # check kl_grad == 0
 
@@ -110,9 +111,9 @@ class ActorAlgorithm:
         return x
 
     def train(self, memory):
-        memory = np.array(memory)
-        states = np.vstack(memory[:, 0])
-        actions = list(memory[:, 1])
+        self.actor.train()
+        states = memory[0]
+        actions = memory[1]
 
         # ----------------------------
         # step 1: get targets
@@ -134,26 +135,31 @@ class ActorAlgorithm:
 
 
 class NPG(ActorAlgorithm):
-    def step(self, step_dir, states):
+    def step(self, step_dir, states, *args):
         params = utils.flat_params(self.actor)
         new_params = params + 0.5 * step_dir
         utils.update_model(self.actor, new_params)
 
 
 class TRPO(ActorAlgorithm):
+    def __init__(self, target_alg, max_kl):
+        super().__init__(target_alg)
+        self.max_kl = max_kl
+
     def get_loss(self, targets, states, actions, old_policy=None):
         new_policy = self.actor.get_log_probs(states, actions)
         if old_policy is None:
             old_policy = new_policy.detach().clone()
         else:
             old_policy = old_policy.detach()
-        return targets * torch.exp(new_policy - old_policy)
+        losses = targets * torch.exp(new_policy - old_policy)
+        return losses.mean()
 
     def step(self, step_dir, states, actions, loss, loss_grad):
         params = utils.flat_params(self.actor)
         shs = 0.5 * (step_dir * self.fisher_vector_product(states, step_dir)
                      ).sum(0, keepdim=True)
-        step_size = 1 / torch.sqrt(shs / hp.max_kl)[0]
+        step_size = 1 / torch.sqrt(shs / self.max_kl)[0]
         full_step = step_size * step_dir
 
         # ----------------------------
@@ -179,7 +185,7 @@ class TRPO(ActorAlgorithm):
             #    .format(kl.data.numpy(), loss_improve, expected_improve[0], i))
 
             # see https: // en.wikipedia.org / wiki / Backtracking_line_search
-            if kl < hp.max_kl and (loss_improve / expected_improve) > 0.5:
+            if kl < self.max_kl and (loss_improve / expected_improve) > 0.5:
                 flag = True
                 break
 
@@ -191,16 +197,15 @@ class TRPO(ActorAlgorithm):
             print('policy update does not impove the surrogate')
 
 
-def get_returns(rewards, masks):
-    rewards = torch.Tensor(rewards)
-    masks = torch.Tensor(masks)
+def get_returns(rewards, masks, gamma=1):
     returns = torch.zeros_like(rewards)
 
     running_returns = 0
 
     for t in reversed(range(0, len(rewards))):
-        running_returns = rewards[t] + hp.gamma * running_returns * masks[t]
+        running_returns = rewards[t] + gamma * running_returns * masks[t]
         returns[t] = running_returns
 
-    returns = (returns - returns.mean()) / returns.std()
+    # Original implementation normalizes returns, do we want that?
+    #returns = (returns - returns.mean()) / returns.std()
     return returns

@@ -1,7 +1,7 @@
 import torch
-from actor import actor
-from actor import dummy_cont
-from actor import dummy_discrete
+from actor import Actor
+from actor import DummyCont
+from actor import DummyDiscrete
 import gym
 
 
@@ -14,7 +14,7 @@ print('Testing continuous actor on MountainCarContinuous-v0!')
 # init env and policy
 env = gym.make('MountainCarContinuous-v0')
 env.seed(seed)
-policy = dummy_cont(env, num_hidden)
+policy = DummyCont(env, num_hidden)
 obs_list = []
 action_list = []
 
@@ -69,7 +69,7 @@ print('Testing discrete control on MountainCar-v0')
 # init env and policy
 env = gym.make('MountainCar-v0')
 env.seed(seed)
-policy = dummy_discrete(env, num_hidden)
+policy = DummyDiscrete(env, num_hidden)
 obs_list = []
 action_list = []
 
