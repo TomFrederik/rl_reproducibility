@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 import torch
 import utils
 
@@ -38,7 +39,7 @@ class BaselineCriticMC(TargetAlgorithm):
         rewards = memory[2]
         masks = memory[3]
 
-        return get_returns(rewards, masks, self.gamma) - self.critic(states)
+        return get_returns(rewards, masks, self.gamma) - self.critic(states.float())
 
     def train(self, memory):
         self.critic.train()
@@ -58,7 +59,7 @@ class BaselineCriticMC(TargetAlgorithm):
             for i in range(n // self.batch_size):
                 batch_index = arr[self.batch_size * i: self.batch_size * (i + 1)]
                 batch_index = torch.LongTensor(batch_index)
-                inputs = torch.Tensor(states)[batch_index]
+                inputs = states.float()[batch_index]
                 target = returns.unsqueeze(1)[batch_index]
 
                 values = self.critic(inputs)
@@ -69,11 +70,11 @@ class BaselineCriticMC(TargetAlgorithm):
 
 
 class ActorAlgorithm:
-    def __init__(self, actor, target_alg):
+    def __init__(self, actor, target_alg, *args):
         self.target_alg = target_alg
         self.actor = actor
 
-    def get_loss(self, returns, states, actions, *args, **kwargs):
+    def get_loss(self, targets, states, actions, *args, **kwargs):
         log_policy = self.actor.get_log_probs(states.float(), actions)
         losses = returns * log_policy
         return losses.mean()
@@ -128,7 +129,7 @@ class ActorAlgorithm:
 
         # ----------------------------
         # step 4: get step direction and step size and update actor
-        self.step(step_dir, states, actions, loss, loss_grad)
+        self.step(step_dir, states, actions, returns, loss, loss_grad)
 
     def step(self, step_dir, states, *args):
         raise NotImplementedError
@@ -142,12 +143,12 @@ class NPG(ActorAlgorithm):
 
 
 class TRPO(ActorAlgorithm):
-    def __init__(self, target_alg, max_kl):
-        super().__init__(target_alg)
+    def __init__(self, actor, target_alg, max_kl):
+        super().__init__(actor, target_alg)
         self.max_kl = max_kl
 
     def get_loss(self, targets, states, actions, old_policy=None):
-        new_policy = self.actor.get_log_probs(states, actions)
+        new_policy = self.actor.get_log_probs(states.float(), actions)
         if old_policy is None:
             old_policy = new_policy.detach().clone()
         else:
@@ -155,7 +156,7 @@ class TRPO(ActorAlgorithm):
         losses = targets * torch.exp(new_policy - old_policy)
         return losses.mean()
 
-    def step(self, step_dir, states, actions, loss, loss_grad):
+    def step(self, step_dir, states, actions, returns, loss, loss_grad):
         params = utils.flat_params(self.actor)
         shs = 0.5 * (step_dir * self.fisher_vector_product(states, step_dir)
                      ).sum(0, keepdim=True)
@@ -165,24 +166,24 @@ class TRPO(ActorAlgorithm):
         # ----------------------------
         # step 5: do backtracking line search for n times
         # Create a copy of the current actor
-        old_actor = self.actor.__class__(self.actor.num_inputs, self.actor.num_outputs)
-        utils.update_model(old_actor, params)
+        old_actor = copy.deepcopy(self.actor)
         expected_improve = (loss_grad * full_step).sum(0, keepdim=True)
+        old_policy = old_actor.get_log_probs(states.float(), actions)
 
         flag = False
         fraction = 1.0
         for i in range(10):
             new_params = params + fraction * full_step
             utils.update_model(self.actor, new_params)
-            new_loss = self.get_loss(states, actions)
+            new_loss = self.get_loss(returns, states, actions, old_policy)
             loss_improve = new_loss - loss
             expected_improve *= fraction
-            kl = self.actor.kl_divergence(states, old_actor=old_actor)
+            kl = self.actor.get_kl(states.float(), old_actor=old_actor)
             kl = kl.mean()
 
-            #print('kl: {:.4f}  loss improve: {:.4f}  expected improve: {:.4f}  '
-            #    'number of line search: {}'
-            #    .format(kl.data.numpy(), loss_improve, expected_improve[0], i))
+            print('kl: {:.4f}  loss improve: {:.4f}  expected improve: {:.4f}  '
+               'number of line search: {}'
+               .format(kl.data.numpy(), loss_improve, expected_improve[0], i))
 
             # see https: // en.wikipedia.org / wiki / Backtracking_line_search
             if kl < self.max_kl and (loss_improve / expected_improve) > 0.5:

@@ -98,7 +98,7 @@ class Actor(nn.Module):
 
         return log_probs
 
-    def get_kl(self, states):
+    def get_kl(self, states, old_actor=None):
         '''
         Computes the KL divergence between the policy and itself, averaged over states.
         This function will be used to compute the Fisher matrix via torch.autograd
@@ -110,7 +110,10 @@ class Actor(nn.Module):
         '''
         # compute parameters for all states
         params = self.forward(states)
-        params_detach = params.detach().clone() # detached parameters for second policy
+        if old_actor is None:
+            params_detach = params.detach().clone() # detached parameters for second policy
+        else:
+            params_detach = old_actor.forward(states).detach()
 
         # get dists for all states
         dists = self.get_dist(params)

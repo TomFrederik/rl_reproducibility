@@ -2,25 +2,25 @@ import torch
 import torch.nn as nn
 import numpy as np
 from actor import DummyDiscrete
-from algorithms import ActorOnlyMC, NPG, get_returns
+from algorithms import BaselineCriticMC, ActorOnlyMC, NPG, TRPO, get_returns
 from utils import sample_memory
 import gym
 
 
-# class Critic(nn.Module):
-#     def __init__(self, num_inputs, num_hidden):
-#         super(Critic, self).__init__()
-#         self.fc1 = nn.Linear(num_inputs, num_hidden)
-#         self.fc2 = nn.Linear(num_hidden, num_hidden)
-#         self.fc3 = nn.Linear(num_hidden, 1)
-#         self.fc3.weight.data.mul_(0.1)
-#         self.fc3.bias.data.mul_(0.0)
+class Critic(nn.Module):
+    def __init__(self, num_inputs, num_hidden):
+        super(Critic, self).__init__()
+        self.fc1 = nn.Linear(num_inputs, num_hidden)
+        self.fc2 = nn.Linear(num_hidden, num_hidden)
+        self.fc3 = nn.Linear(num_hidden, 1)
+        self.fc3.weight.data.mul_(0.1)
+        self.fc3.bias.data.mul_(0.0)
 
-#     def forward(self, x):
-#         x = F.tanh(self.fc1(x))
-#         x = F.tanh(self.fc2(x))
-#         v = self.fc3(x)
-#         return v
+    def forward(self, x):
+        x = torch.tanh(self.fc1(x))
+        x = torch.tanh(self.fc2(x))
+        v = self.fc3(x)
+        return v
 
 
 seed = 42
@@ -29,13 +29,18 @@ num_hidden = 10
 env = gym.make('CartPole-v1')
 env.seed(seed)
 actor = DummyDiscrete(env, num_hidden)
-#critic = Critic(env.observation_space.shape[0], num_hidden)
-critic_alg = ActorOnlyMC()
-actor_alg = NPG(actor, critic_alg)
+critic = Critic(env.observation_space.shape[0], num_hidden)
+optimizer = torch.optim.SGD(critic.parameters(), lr=1e-3)
+#critic_alg = ActorOnlyMC()
+critic_alg = BaselineCriticMC(critic, optimizer)
+actor_alg = TRPO(actor, critic_alg, max_kl=0.01)
 
 for i in range(100):
-    memory = sample_memory(env, actor, 10, render=True)
+    # sample 5 episodes
+    memory = sample_memory(env, actor, 5, render=True)
     returns = get_returns(memory[2], memory[3])
-    print("Episode {}, Returns: {}".format(10*i, returns.mean().item()))
+    print("Episode {}, Returns: {}".format(10 * (i + 1), returns.mean().item()))
+    # train the critic on those episodes
     critic_alg.train(memory)
+    # train the actor on those episodes
     actor_alg.train(memory)
