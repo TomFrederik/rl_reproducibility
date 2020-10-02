@@ -136,9 +136,13 @@ class ActorAlgorithm:
 
 
 class NPG(ActorAlgorithm):
+    def __init__(self, actor, target_alg, lr):
+        super().__init__(actor, target_alg)
+        self.lr = lr
+
     def step(self, step_dir, states, *args):
         params = utils.flat_params(self.actor)
-        new_params = params + 0.5 * step_dir
+        new_params = params + self.lr * step_dir
         utils.update_model(self.actor, new_params)
 
 

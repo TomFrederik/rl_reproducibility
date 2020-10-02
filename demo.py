@@ -29,10 +29,16 @@ num_hidden = 10
 env = gym.make('CartPole-v1')
 env.seed(seed)
 actor = DummyDiscrete(env, num_hidden)
+
+## Use this to use a critic baseline:
 critic = Critic(env.observation_space.shape[0], num_hidden)
 optimizer = torch.optim.SGD(critic.parameters(), lr=1e-3)
-#critic_alg = ActorOnlyMC()
 critic_alg = BaselineCriticMC(critic, optimizer)
+## Or this to just use MC returns (actor-only):
+#critic_alg = ActorOnlyMC()
+
+## Choose between NPG and TRPO
+#actor_alg = NPG(actor, critic_alg, lr=0.5)
 actor_alg = TRPO(actor, critic_alg, max_kl=0.01)
 
 for i in range(100):
