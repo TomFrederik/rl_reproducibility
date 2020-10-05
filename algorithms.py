@@ -141,7 +141,9 @@ class ActorAlgorithm:
 
         # ----------------------------
         # step 4: get step direction and step size and update actor
-        self.step(step_dir, states, actions, returns, loss, loss_grad)
+        step_size = self.step(step_dir, states, actions, returns, loss, loss_grad)
+
+        return step_size
 
     # Remaining functions aren't needed externally, only used inside this class
     def step(self, step_dir, states, *args):
@@ -196,6 +198,8 @@ class NPG(ActorAlgorithm):
         new_params = params + self.lr * step_dir
         utils.update_model(self.actor, new_params)
 
+        return self.lr # for consistency when monitoring step_size
+
 
 class TRPO(ActorAlgorithm):
     def __init__(self, actor, target_alg, max_kl):
@@ -212,6 +216,9 @@ class TRPO(ActorAlgorithm):
         return losses.mean()
 
     def step(self, step_dir, states, actions, returns, loss, loss_grad):
+        '''
+        Returns the step size taken
+        '''
         params = utils.flat_params(self.actor)
         shs = 0.5 * (step_dir * self.fisher_vector_product(states, step_dir)
                      ).sum(0, keepdim=True)
@@ -243,14 +250,19 @@ class TRPO(ActorAlgorithm):
             # see https: // en.wikipedia.org / wiki / Backtracking_line_search
             if kl < self.max_kl and (loss_improve / expected_improve) > 0.5:
                 flag = True
+                return fraction*step_size.item()
                 break
 
             fraction *= 0.5
+
+        
 
         if not flag:
             params = utils.flat_params(old_actor)
             utils.update_model(self.actor, params)
             print('policy update does not impove the surrogate')
+
+            return 0
 
 
 def get_returns(rewards, masks, gamma=1):

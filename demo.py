@@ -33,20 +33,20 @@ actor = DummyDiscrete(env, num_hidden)
 ## Use this to use a critic baseline:
 critic = Critic(env.observation_space.shape[0], num_hidden)
 optimizer = torch.optim.SGD(critic.parameters(), lr=1e-3)
-critic_alg = BaselineCriticMC(critic, optimizer)
+target_alg = BaselineCriticMC(critic, optimizer)
 ## Or this to just use MC returns (actor-only):
 #critic_alg = ActorOnlyMC()
 
 ## Choose between NPG and TRPO
 #actor_alg = NPG(actor, critic_alg, lr=0.5)
-actor_alg = TRPO(actor, critic_alg, max_kl=0.01)
+actor_alg = TRPO(actor, target_alg, max_kl=0.01)
 
 for i in range(100):
     # sample 5 episodes
-    memory = sample_memory(env, actor, 5, render=True)
+    memory = sample_memory(env, actor, num_episodes=5, render=True)
     returns = get_returns(memory[2], memory[3])
     print("Episode {}, Returns: {}".format(10 * (i + 1), returns.mean().item()))
     # train the critic on those episodes
-    critic_alg.train(memory)
+    target_alg.train(memory)
     # train the actor on those episodes
     actor_alg.train(memory)
