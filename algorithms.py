@@ -1,3 +1,6 @@
+"""Note: many functions here take a "memory" argument.
+See the documentation of sample_memory in utils.py for
+an explanation"""
 import numpy as np
 import copy
 import torch
@@ -5,13 +8,32 @@ import utils
 
 
 class TargetAlgorithm:
+    """An algorithm for providing targets for the NPG or TRPO updates.
+
+    Child classes need to overwrite targets() and should overwrite train()
+    if they require training.
+
+    Examples: MC returns, Critic baseline, GAE"""
+
     def __init__(self, gamma=1):
         self.gamma = gamma
 
     def train(self, memory):
+        """Train the critic based on some sampled memory.
+
+        This should be called during training procedures but
+        child classes don't have to implement it if they don't require
+        training (for example MC returns)."""
         pass
 
     def targets(self, memory):
+        """Return value targets for the state-action pairs from memory.
+
+        Returns:
+            A torch tensor of shape (N, ) where N is the number of steps in the memory
+            The n-th element should be an estimate of the return from the n-th memory
+            step until the end of its episode (optionally with a baseline subtracted).
+            """
         raise NotImplementedError
 
 
@@ -26,15 +48,24 @@ class ActorOnlyMC(TargetAlgorithm):
 
 
 class BaselineCriticMC(TargetAlgorithm):
-    """Baseline state value function learned by a critic is subtracted."""
+    """Baseline state value function learned by a critic is subtracted froM REINFORCE targets."""
 
-    def __init__(self, critic, critic_optim, gamma=1, batch_size=16):
+    def __init__(self, critic, critic_optim, gamma=1, batch_size=16, epochs=5):
+        """Args:
+            critic: a Critic instance. critic.forward(states) should return state value estimates
+            critic_optim: an optimizer instance from torch.optim, optimizing critic's parameters
+            gamma: discount_factor
+            batch_size: batch_size to use for training the critic
+            epochs: number of epochs to train on a fixed memory"""
+
         super().__init__(gamma)
         self.critic = critic
         self.optim = critic_optim
         self.batch_size = batch_size
+        self.epochs = epochs
 
     def targets(self, memory):
+        self.critic.eval()
         states = memory[0]
         rewards = memory[2]
         masks = memory[3]
@@ -53,7 +84,7 @@ class BaselineCriticMC(TargetAlgorithm):
         n = len(states)
         arr = np.arange(n)
 
-        for epoch in range(5):
+        for epoch in range(self.epochs):
             np.random.shuffle(arr)
 
             for i in range(n // self.batch_size):
@@ -70,13 +101,56 @@ class BaselineCriticMC(TargetAlgorithm):
 
 
 class ActorAlgorithm:
+    """An algorithm for training an actor, currently either NPG or TRPO.
+
+    Usage: Initialize the class with an Actor and TargetAlgorithm instance.
+    Sample some memory and train the actor on it. Repeat several times.
+    This class is only for training the actor, no other methods for interacting
+    with it are provided.
+
+    Child classes must overwrite step() which decides on the step to take
+    based on the natural gradient and other parameters."""
+
     def __init__(self, actor, target_alg, *args):
+        """Args:
+            actor: an Actor instance
+            target_alg: a TargetAlgorithm instance to use for determining update targets during training"""
         self.target_alg = target_alg
         self.actor = actor
 
+    def train(self, memory):
+        """Train the actor based on sampled memory.
+        Modifies the actor that was provided in __init__.
+
+        Uses the TargetAlgorithm specified in __init__ to determine update targets,
+        then calculates loss and natural gradient. Step size then depends on subclass (NPG or TRPO)."""
+        self.actor.train()
+        states = memory[0]
+        actions = memory[1]
+
+        # ----------------------------
+        # step 1: get targets
+        returns = self.target_alg.targets(memory)
+
+        # ----------------------------
+        # step 3: get gradient of loss and hessian of kl
+        loss = self.get_loss(returns, states, actions)
+        loss_grad = torch.autograd.grad(loss, self.actor.parameters())
+        loss_grad = utils.flat_grad(loss_grad)
+        step_dir = self.conjugate_gradient(states, loss_grad.data, nsteps=10)
+
+        # ----------------------------
+        # step 4: get step direction and step size and update actor
+        self.step(step_dir, states, actions, returns, loss, loss_grad)
+
+    # Remaining functions aren't needed externally, only used inside this class
+    def step(self, step_dir, states, *args):
+        """Take a step in direction step_dir, based on states and possibly other arguments."""
+        raise NotImplementedError
+
     def get_loss(self, targets, states, actions, *args, **kwargs):
         log_policy = self.actor.get_log_probs(states.float(), actions)
-        losses = returns * log_policy
+        losses = targets * log_policy
         return losses.mean()
 
     def fisher_vector_product(self, states, p):
@@ -110,29 +184,6 @@ class ActorAlgorithm:
             if rdotr < residual_tol:
                 break
         return x
-
-    def train(self, memory):
-        self.actor.train()
-        states = memory[0]
-        actions = memory[1]
-
-        # ----------------------------
-        # step 1: get targets
-        returns = self.target_alg.targets(memory)
-
-        # ----------------------------
-        # step 3: get gradient of loss and hessian of kl
-        loss = self.get_loss(returns, states, actions)
-        loss_grad = torch.autograd.grad(loss, self.actor.parameters())
-        loss_grad = utils.flat_grad(loss_grad)
-        step_dir = self.conjugate_gradient(states, loss_grad.data, nsteps=10)
-
-        # ----------------------------
-        # step 4: get step direction and step size and update actor
-        self.step(step_dir, states, actions, returns, loss, loss_grad)
-
-    def step(self, step_dir, states, *args):
-        raise NotImplementedError
 
 
 class NPG(ActorAlgorithm):
@@ -203,6 +254,15 @@ class TRPO(ActorAlgorithm):
 
 
 def get_returns(rewards, masks, gamma=1):
+    """Calculate the returns from sample memory.
+
+    Args:
+        rewards: Tensor of shape (N, )
+        masks: Tensor of shape (N, ) with values 0/1 or False/True
+        gamma: discount factor
+
+    Returns:
+        A Tensor of shape (N, ) of returns until the end of the episode."""
     returns = torch.zeros_like(rewards)
 
     running_returns = 0

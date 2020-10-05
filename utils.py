@@ -6,15 +6,26 @@ from collections import deque
 def sample_memory(env, actor, num_episodes, render=False):
     """Sample episodes from an environment using an Actor to select actions.
 
-    Returned memory has at least num_steps steps but usually has a few more because
-    we sample until the episode is finished.
+    Args:
+        env: an OpenAI Gym environment instance
+        actor: an Actor instance (needs a sample_action method)
+        num_episodes: (int) number of episodes to sample
+        render: (bool) whether to render the environment after every step
+                (should be turned off during long training runs for performance reasons)
 
-    If an episode takes more than 10000 steps, it is stopped at that point.
-    For environments with really long episodes, we may need another method."""
+    Returns:
+        A tuple (states, actions, rewards, masks) where all elements are Tensors and
+          - states has shape (N, observation_space_dim)
+          - actions has shape (N, )
+          - rewards has shape (N, )
+          - masks has shape (N, ); it is 0 if the episode is done and 1 otherwise
+
+    Note: for now, only environments with scalar actions are supported, as can be seen from
+    the signature"""
+
     actor.eval()
     memory = []
 
-    steps = 0
     for i in range(num_episodes):
         state = env.reset()
         done = False
@@ -38,6 +49,7 @@ def sample_memory(env, actor, num_episodes, render=False):
     return [torch.tensor(xs) for xs in zip(*memory)]
 
 
+# Some more utilities that are used in algorithms.py, probably not needed elsewhere
 def flat_grad(grads):
     grad_flatten = []
     for grad in grads:
