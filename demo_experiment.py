@@ -9,28 +9,34 @@ from experiment_class import Experiment, mult_seed_exp
 
 
 class Critic(nn.Module):
-    def __init__(self, num_inputs, num_hidden):
+    def __init__(self, num_inputs, num_hidden1, num_hidden2=None):
         super(Critic, self).__init__()
-        self.fc1 = nn.Linear(num_inputs, num_hidden)
-        self.fc2 = nn.Linear(num_hidden, num_hidden)
-        self.fc3 = nn.Linear(num_hidden, 1)
+        self.fc1 = nn.Linear(num_inputs, num_hidden1)
+        self.has_fc2 = False
+        if num_hidden2:
+            self.has_fc2 = True
+            self.fc2 = nn.Linear(num_hidden1, num_hidden2)
+            self.fc3 = nn.Linear(num_hidden2, 1)
+        else:
+            self.fc3 = nn.Linear(num_hidden1, 1)
         self.fc3.weight.data.mul_(0.1)
         self.fc3.bias.data.mul_(0.0)
 
     def forward(self, x):
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
+        x = torch.relu(self.fc1(x))
+        if self.has_fc2:
+            x = torch.relu(self.fc2(x))
         v = self.fc3(x)
         return v
 
 # run a single experiment
 
-ac_kwargs = {'num_hidden':10}
+ac_kwargs = {'num_hidden1':15, 'num_hidden2':10}
 ac_alg_kwargs = {'max_kl':0.01}
 
 target_alg_kwargs = {'gamma':0.98, 'batch_size':16, 'epochs':5}
 
-critic_kwargs = {'num_hidden':10}
+critic_kwargs = {'num_hidden1':10}
 critic_optim_kwargs = {'lr':3e-4}
 
 
@@ -52,16 +58,16 @@ experiment_parameters =   {'seed':42,
                            'ep_per_iter':5,
                            'log_file':'./demo/single/log.npz'}
 
-
+'''
 experiment = Experiment(**experiment_parameters)
 
 experiment.run()
 
 experiment.plot('./demo/single/plots/')
-
+'''
 
 # run mutliple experiments with different seeds
-seeds = [42,11,23,58]
+seeds = [17,7,2,15,19,21,23]
 log_dir = './demo/multi/'
 mult_exp = mult_seed_exp(experiment_parameters, seeds, log_dir)
 

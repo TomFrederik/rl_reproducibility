@@ -131,7 +131,7 @@ class DummyCont(Actor):
     dummy child class to showcase how to use the actor parent class for continuous control
     '''
 
-    def __init__(self, env, num_hidden):
+    def __init__(self, env, num_hidden1, num_hidden2=None):
         '''
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
@@ -141,7 +141,17 @@ class DummyCont(Actor):
         #####
         # some more initialization, depending on the specific method 
         # e.g.
-        self.network = torch.nn.Sequential(torch.nn.Linear(env.observation_space.shape[0], num_hidden), torch.nn.ReLU(), torch.nn.Linear(num_hidden, 2))        
+        if num_hidden2:
+            self.network = torch.nn.Sequential(
+                            torch.nn.Linear(env.observation_space.shape[0], num_hidden1),
+                            torch.nn.ReLU(),
+                            torch.nn.Linear(num_hidden1, num_hidden2),
+                            torch.nn.ReLU(),
+                            torch.nn.Linear(num_hidden2, 2))
+        else:
+            self.network = torch.nn.Sequential(torch.nn.Linear(env.observation_space.shape[0], num_hidden1),
+                                             torch.nn.ReLU(), 
+                                             torch.nn.Linear(num_hidden1, 2))        
         # ...
         #####
 
@@ -168,7 +178,7 @@ class DummyDiscrete(Actor):
     This model outputs probabilities for each discrete action.
     '''
 
-    def __init__(self, env, num_hidden):
+    def __init__(self, env, num_hidden1, num_hidden2=None):
         '''
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
@@ -178,7 +188,19 @@ class DummyDiscrete(Actor):
         #####
         # some more initialization, depending on the specific method 
         # e.g.
-        self.network = torch.nn.Sequential(torch.nn.Linear(env.observation_space.shape[0], num_hidden), torch.nn.ReLU(), torch.nn.Linear(num_hidden, env.action_space.n), torch.nn.Softmax(dim=1))        
+        if num_hidden2:
+            self.network = torch.nn.Sequential(
+                            torch.nn.Linear(env.observation_space.shape[0], num_hidden1),
+                            torch.nn.ReLU(),
+                            torch.nn.Linear(num_hidden1, num_hidden2),
+                            torch.nn.ReLU(),
+                            torch.nn.Linear(num_hidden2, env.action_space.n),
+                            torch.nn.Softmax(dim=-1))
+        else:
+            self.network = torch.nn.Sequential(torch.nn.Linear(env.observation_space.shape[0], num_hidden1), 
+                                            torch.nn.ReLU(), 
+                                            torch.nn.Linear(num_hidden1, env.action_space.n), 
+                                            torch.nn.Softmax(dim=1))        
         # ...
         #####
 
