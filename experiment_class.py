@@ -77,7 +77,7 @@ class Experiment:
             memory = utils.sample_memory(self.env, self.actor, self.ep_per_iter)
 
             # get returns for monitoring
-            returns = algorithms.get_returns(memory[2], memory[3])
+            returns = algorithms.get_episode_returns(memory[2], memory[3])
             self.results['returns'].append(returns.mean().item())
 
             print("Episode {}, Mean Return: {}".format(self.ep_per_iter * (i + 1), returns.mean().item()))

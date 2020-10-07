@@ -147,7 +147,10 @@ class ActorAlgorithm:
 
     # Remaining functions aren't needed externally, only used inside this class
     def step(self, step_dir, states, *args):
-        """Take a step in direction step_dir, based on states and possibly other arguments."""
+        """Take a step in direction step_dir, based on states and possibly other arguments.
+
+        Returns:
+            (float) The step size, as a coefficient of step_dir"""
         raise NotImplementedError
 
     def get_loss(self, targets, states, actions, *args, **kwargs):
@@ -243,9 +246,9 @@ class TRPO(ActorAlgorithm):
             kl = self.actor.get_kl(states.float(), old_actor=old_actor)
             kl = kl.mean()
 
-            print('kl: {:.4f}  loss improve: {:.4f}  expected improve: {:.4f}  '
-               'number of line search: {}'
-               .format(kl.data.numpy(), loss_improve, expected_improve[0], i))
+            #print('kl: {:.4f}  loss improve: {:.4f}  expected improve: {:.4f}  '
+            #   'number of line search: {}'
+            #   .format(kl.data.numpy(), loss_improve, expected_improve[0], i))
 
             # see https: // en.wikipedia.org / wiki / Backtracking_line_search
             if kl < self.max_kl and (loss_improve / expected_improve) > 0.5:
@@ -254,8 +257,6 @@ class TRPO(ActorAlgorithm):
                 break
 
             fraction *= 0.5
-
-        
 
         if not flag:
             params = utils.flat_params(old_actor)
@@ -266,7 +267,7 @@ class TRPO(ActorAlgorithm):
 
 
 def get_returns(rewards, masks, gamma=1):
-    """Calculate the returns from sample memory.
+    """Calculate the returns for each time step from sample memory.
 
     Args:
         rewards: Tensor of shape (N, )
@@ -286,3 +287,26 @@ def get_returns(rewards, masks, gamma=1):
     # Original implementation normalizes returns, do we want that?
     #returns = (returns - returns.mean()) / returns.std()
     return returns
+
+
+def get_episode_returns(rewards, masks, gamma=1):
+    """Calculate the returns for complete episodes from memory.
+
+    Args:
+        rewards: Tensor of shape (N, )
+        masks: Tensor of shape (N, ) with values 0/1 or False/True
+        gamma: discount factor
+
+    Returns:
+        An ndarray of shape (n_episodes, ) of returns"""
+    returns = []
+
+    running_returns = 0
+
+    for t in reversed(range(0, len(rewards))):
+        running_returns = rewards[t] + gamma * running_returns * masks[t]
+        if t == 0 or not masks[t - 1]:
+            # we are at the beginning of an episode
+            returns.append(running_returns)
+
+    return np.array(returns)
