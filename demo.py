@@ -28,7 +28,7 @@ num_hidden = 10
 
 env = gym.make('CartPole-v1')
 env.seed(seed)
-actor = DummyDiscrete(env, num_hidden)
+actor = DummyDiscrete(env.observation_space.shape[0], num_hidden)
 
 ## Use this to use a critic baseline:
 critic = Critic(env.observation_space.shape[0], num_hidden)
