@@ -39,7 +39,9 @@ class Experiment:
 
         # set up actor and target / critic
         self.actor = ac(num_input=self.env.observation_space.shape[0],
-                        num_output=self.env.action_space.n,
+                        # continuous action spaces don't have n attribute,
+                        # but in that case num_output isn't used anyways
+                        num_output=getattr(self.env.action_space, 'n', 1),
                         **ac_kwargs)
 
         if critic is None:

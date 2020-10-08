@@ -131,7 +131,7 @@ class DummyCont(Actor):
     dummy child class to showcase how to use the actor parent class for continuous control
     '''
 
-    def __init__(self, num_input, num_hidden, *args):
+    def __init__(self, num_input, num_hidden, **kwargs):
         '''
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
