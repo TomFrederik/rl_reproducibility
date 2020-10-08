@@ -44,8 +44,6 @@ def sample_memory(env, actor, num_episodes, render=False):
             if cont:
                 action = [action]
 
-
-
             next_state, reward, done, _ = env.step(action)
             if render:
                 env.render()
