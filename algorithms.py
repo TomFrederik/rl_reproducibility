@@ -254,7 +254,7 @@ class TRPO(ActorAlgorithm):
             if kl < self.max_kl and (loss_improve / expected_improve) > 0.5:
                 flag = True
                 return fraction*step_size.item()
-                break
+                
 
             fraction *= 0.5
 

@@ -6,7 +6,7 @@ from algorithms import BaselineCriticMC, ActorOnlyMC, NPG, TRPO, get_returns
 from utils import sample_memory
 import gym
 from experiment_class import Experiment, mult_seed_exp
-
+from time import time
 
 class Critic(nn.Module):
     def __init__(self, num_inputs, num_hidden):
@@ -73,7 +73,7 @@ critic_kwargs = {'num_hidden':20}
 critic_optim_kwargs = {'lr':3e-4}
 target_alg_kwargs = {'batch_size':16, 'epochs':5}
 num_iters = 20
-seeds = [42,11,23,58] # subject to change
+seeds = [42,11] # subject to change
 log_dir = './mc_cont/trpo/'
 
 ####
@@ -111,24 +111,16 @@ high = 1
 num_trials = 3 # how many draws we are taking
 
 
-#env = gym.make('MountainCar-v0')
-env = gym.make('MountainCarContinuous-v0')
-print(env.action_space)
-print(type(env.action_space))
-print(env.action_space.shape)
-#print(env.action_space.low)
-#print(env.action_space.high)
-env.reset()
-env.step([1])
-raise NotImplementedError
-
+search_time = time()
 max_return = -np.inf
 for n in range(num_trials):
+
+    trial_time = time()
 
     # draw a sample from the loguniform distribution
     max_kl = 10 ** (np.random.uniform(low, high))
 
-    print('Now running wiht max_kl = {}'.format(max_kl))
+    print('\nNow running wiht max_kl = {}'.format(max_kl))
     
     # set up experiment
     ac_alg_kwargs['max_kl'] = max_kl
@@ -142,16 +134,18 @@ for n in range(num_trials):
     # get results
     mean_returns, _, _, _ = mult_exp.get_mean_results()
 
-    print('Mean return at termination with max_kl {} was {}'.format(max_kl, mean_returns[-1]))
+    print('Mean return at termination with max_kl {0:1.5f} was {1:1.2f}'.format(max_kl, mean_returns[-1]))
 
     if mean_returns[-1]>max_return:
         print('Updating max return run..')
         max_return = mean_returns[-1]
 
-        mult_exp.plot('./mc_cont/trpo/plots/best_run.pdf')
+        mult_exp.plot('./mc_cont/trpo/plots/best_run_')
     #mult_exp.plot(plot_path=log_dir+'plots/')
 
+    print('This trial took {0:1.2f} seconds'.format((time()-trial_time)))
 
+print('Hyperparameter search finished. Time: {0:1.0f} minutes and {1:1.2f} seconds'.format((time()-search_time)//60, (time()-search_time)))
 
 #def run_loguniform_hp_search(low, high, num_trials, keyword, params):
 #    '''
