@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from collections import deque
-
+import gym
 
 def sample_memory(env, actor, num_episodes, render=False):
     """Sample episodes from an environment using an Actor to select actions.
