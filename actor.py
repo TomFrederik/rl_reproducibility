@@ -131,7 +131,7 @@ class DummyCont(Actor):
     dummy child class to showcase how to use the actor parent class for continuous control
     '''
 
-    def __init__(self, num_input, num_hidden):
+    def __init__(self, num_input, num_hidden, *args):
         '''
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
@@ -168,7 +168,7 @@ class DummyDiscrete(Actor):
     This model outputs probabilities for each discrete action.
     '''
 
-    def __init__(self, num_input, num_hidden):
+    def __init__(self, num_input, num_hidden, num_output):
         '''
         init child class, set up forward parameters, such as number of hidden units or size of the state and action space.
         '''
@@ -178,7 +178,12 @@ class DummyDiscrete(Actor):
         #####
         # some more initialization, depending on the specific method 
         # e.g.
-        self.network = torch.nn.Sequential(torch.nn.Linear(num_input, num_hidden), torch.nn.ReLU(), torch.nn.Linear(num_hidden, env.action_space.n), torch.nn.Softmax(dim=1))        
+        self.network = torch.nn.Sequential(
+            torch.nn.Linear(num_input, num_hidden),
+            torch.nn.ReLU(),
+            torch.nn.Linear(num_hidden, num_output),
+            torch.nn.Softmax(dim=1)
+        )
         # ...
         #####
 

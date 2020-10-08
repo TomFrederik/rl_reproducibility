@@ -38,7 +38,9 @@ class Experiment:
         self.env.seed(self.seed)
 
         # set up actor and target / critic
-        self.actor = ac(self.env.observation_space.shape[0], **ac_kwargs)
+        self.actor = ac(num_input=self.env.observation_space.shape[0],
+                        num_output=self.env.action_space.n,
+                        **ac_kwargs)
 
         if critic is None:
             # setting up target alg
