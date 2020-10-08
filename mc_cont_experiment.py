@@ -7,6 +7,7 @@ from utils import sample_memory
 import gym
 from experiment_class import Experiment, mult_seed_exp
 from time import time
+import os
 
 class Critic(nn.Module):
     def __init__(self, num_inputs, num_hidden):
@@ -74,7 +75,7 @@ critic_optim_kwargs = {'lr':3e-4}
 target_alg_kwargs = {'batch_size':16, 'epochs':5}
 num_iters = 20
 seeds = [42,11] # subject to change
-log_dir = './mc_cont/trpo/'
+log_dir = './mc_cont/trpo/BaselineCriticMC/'
 
 ####
 
@@ -99,7 +100,7 @@ experiment_parameters =   {'seed':42,
                            'critic_optim_kwargs':critic_optim_kwargs,
                            'num_iters':num_iters,
                            'ep_per_iter':ep_per_iter,
-                           'log_file':'./mc_cont/trpo/single.npz'}
+                           'log_file':'./mc_cont/trpo/BaselineCriticMC/single.npz'}
 
 
 ###
@@ -108,7 +109,7 @@ experiment_parameters =   {'seed':42,
 ###
 low = -4
 high = 1
-num_trials = 3 # how many draws we are taking
+num_trials = 10 # how many draws we are taking
 
 
 search_time = time()
@@ -125,6 +126,8 @@ for n in range(num_trials):
     # set up experiment
     ac_alg_kwargs['max_kl'] = max_kl
     experiment_parameters['ac_alg_kwargs'] = ac_alg_kwargs
+    experiment_parameters['log_dir'] = log_dir + 'kl_{0:1.4f}/'
+    os.mkdir(experiment_parameters['log_dir'])
     experiment = Experiment(**experiment_parameters)
 
     # run mutliple experiments with different seeds
@@ -140,7 +143,7 @@ for n in range(num_trials):
         print('Updating max return run..')
         max_return = mean_returns[-1]
 
-        mult_exp.plot('./mc_cont/trpo/plots/best_run_')
+        mult_exp.plot(log_dir + 'plots/best_run_')
     #mult_exp.plot(plot_path=log_dir+'plots/')
 
     print('This trial took {0:1.2f} seconds'.format((time()-trial_time)))

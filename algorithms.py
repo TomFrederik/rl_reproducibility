@@ -253,7 +253,7 @@ class TRPO(ActorAlgorithm):
             # see https: // en.wikipedia.org / wiki / Backtracking_line_search
             if kl < self.max_kl and (loss_improve / expected_improve) > 0.5:
                 flag = True
-                return fraction*step_size.item()
+                return fraction*step_size.item() # return the step_size
                 
 
             fraction *= 0.5
