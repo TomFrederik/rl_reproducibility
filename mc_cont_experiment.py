@@ -111,6 +111,17 @@ high = 1
 num_trials = 3 # how many draws we are taking
 
 
+#env = gym.make('MountainCar-v0')
+env = gym.make('MountainCarContinuous-v0')
+print(env.action_space)
+print(type(env.action_space))
+print(env.action_space.shape)
+#print(env.action_space.low)
+#print(env.action_space.high)
+env.reset()
+env.step([1])
+raise NotImplementedError
+
 max_return = -np.inf
 for n in range(num_trials):
 

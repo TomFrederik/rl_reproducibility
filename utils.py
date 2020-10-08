@@ -12,7 +12,7 @@ def sample_memory(env, actor, num_episodes, render=False):
         num_episodes: (int) number of episodes to sample
         render: (bool) whether to render the environment after every step
                 (should be turned off during long training runs for performance reasons)
-
+        
     Returns:
         A tuple (states, actions, rewards, masks) where all elements are Tensors and
           - states has shape (N, observation_space_dim)
@@ -26,6 +26,12 @@ def sample_memory(env, actor, num_episodes, render=False):
     actor.eval()
     memory = []
 
+    # is the action space continuous?
+    if type(env.action_space) == gym.spaces.box.Box:
+        cont = True
+    else:
+        cont = False
+
     for i in range(num_episodes):
         state = env.reset()
         done = False
@@ -33,6 +39,13 @@ def sample_memory(env, actor, num_episodes, render=False):
             # not entirely sure what this does, I think it normalizes and clips the state values?
             #state = running_state(state)
             action = actor.sample_action(torch.Tensor(state).unsqueeze(0)).item()
+
+            # continuous action spaces expect a list 
+            if cont:
+                action = [action]
+
+
+
             next_state, reward, done, _ = env.step(action)
             if render:
                 env.render()
