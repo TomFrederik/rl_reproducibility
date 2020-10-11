@@ -61,7 +61,7 @@ class ContActor(Actor):
         x = nn.functional.relu(self.fc1(states))
         x = nn.functional.relu(self.fc2(x))
         params = self.fc3(x)
-
+        
         params[:,1] = torch.exp(params[:,1]) # make sure variance is positive
         
         return params
@@ -70,11 +70,11 @@ class ContActor(Actor):
 
 ####
 # dont change these params:
-ac_kwargs = {'num_hidden':20}
-critic_kwargs = {'num_hidden':20}
+ac_kwargs = {'num_hidden':64}
+critic_kwargs = {'num_hidden':64}
 critic_optim_kwargs = {'lr':3e-4}
-target_alg_kwargs = {'batch_size':16, 'epochs':5}
-num_iters = 10
+target_alg_kwargs = {'batch_size':16, 'epochs':3}
+num_iters = 100
 seeds = [42,11,23] # subject to change
 log_dir = './mc_cont/trpo/BaselineCriticMC/'
 try:
@@ -91,7 +91,7 @@ except:
 ####
 # do change these params:
 target_alg_kwargs['gamma'] = 0.98
-ep_per_iter = 5
+ep_per_iter = 1
 ac_alg_kwargs = {'max_kl':0.01}
 ####
 
@@ -112,6 +112,7 @@ experiment_parameters =   {'seed':42,
                            'log_file':'./mc_cont/trpo/BaselineCriticMC/single.npz'}
 
 
+
 ###
 # set up search space for max_kl
 # we are setting up a log-normal distribution
@@ -119,8 +120,8 @@ experiment_parameters =   {'seed':42,
 #low = -1
 #high = 1.5
 #num_trials = 4 # how many draws we are taking
-low=0
-high = 0
+low= -2
+high = -2
 num_trials = 1
 
 search_time = time()

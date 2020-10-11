@@ -82,4 +82,4 @@ for i in range(num_rollouts//ep_per_iter):
 
 
 # save
-np.savez_compressed('./random_rollouts/1000_{}.npz'.format(int(time()), **rollouts))
+np.savez_compressed('./random_rollouts/{}.npz'.format(int(time())), **rollouts)
