@@ -71,29 +71,37 @@ class Experiment:
         # make sure torch is seeded correctly
         torch.manual_seed(self.seed)
 
-        # for logging
-        self.results['returns'] = []
-        self.results['step_size'] = []
-
-        #
+        # run training
         for i in range(self.num_iters):
             # sample trajectories
             memory = utils.sample_memory(self.env, self.actor, self.ep_per_iter)
 
             # get returns for monitoring
             returns = algorithms.get_episode_returns(memory[2], memory[3])
+            if not('returns' in self.results.keys()):
+                self.results['returns'] = [] 
             self.results['returns'].append(returns.mean().item())
 
-            print("Episode {}, Mean Return: {}".format(self.ep_per_iter * (i + 1), returns.mean().item()))
                         
             # train actor 
-            step_size = self.ac_alg.train(memory)
-            self.results['step_size'].append(step_size)
+            results = self.ac_alg.train(memory)
+
+            # log results
+            for key in results.keys():
+                if key == 'returns':
+                    continue
+                if not(key in self.results.keys()):
+                    self.results[key] = []
+                self.results[key].append(results[key])
 
             # train critic, will just pass if no training available
             if not (self.critic is None):
                 self.target_alg.train(memory)
         
+
+            print("Episode {0}, Mean Return: {1:1.3f}, Max Return: {2:1.3f}, Entropy: {3:1.3f}".format(self.ep_per_iter * (i + 1), returns.mean().item(), returns.max().item(), results['entropy']))
+
+
         # save results
         np.savez_compressed(self.log_file, returns=self.results['returns'], step_size=self.results['step_size'])
 
@@ -112,6 +120,7 @@ class Experiment:
         Plot the results of the last / last loaded run.
         '''
 
+        '''
         # plot step sizes
         plt.figure()
         plt.plot(np.arange(self.num_iters), self.results['step_size'], label='step size')
@@ -127,6 +136,15 @@ class Experiment:
         plt.ylabel('Return')
         plt.legend()
         plt.savefig(plot_path+'returns.pdf')
+        '''
+
+        for key in self.results.keys():
+            plt.figure()
+            plt.plot(np.arange(self.num_iters), self.results[key], label=key)
+            plt.ylabel(key)
+            plt.xlabel('Iteration')
+            plt.legend()
+            plt.savefig(plot_path+key+'.pdf')
 
         
 
@@ -164,6 +182,8 @@ class mult_seed_exp:
 
             # store results
             self.results[self.seeds[i]] = exp.results
+
+            self.exp_results_keys = exp.results.keys()
         
         # save results
         result_kwargs = {}
@@ -178,20 +198,32 @@ class mult_seed_exp:
         Use this method if you want to plot experiments with different parameters in one plot.
         '''
         # put everything in one array
+        result_array = np.zeros((len(self.seeds), self.experiment_parameters['num_iters'], len(self.exp_results_keys)))
+        
+        # fill with value in seeds
+        '''
         returns = np.zeros((len(self.seeds), self.experiment_parameters['num_iters']))
         step_size = np.zeros((len(self.seeds), self.experiment_parameters['num_iters']))
         
         for i in range(len(self.seeds)):
-            returns[i,:] = self.results[self.seeds[i]]['returns']
-            step_size[i,:] = self.results[self.seeds[i]]['step_size']
-
-        # compute mean and std
+                returns[i,:] = self.results[self.seeds[i]]['returns']
+                step_size[i,:] = self.results[self.seeds[i]]['step_size']
+        
         returns_means = np.mean(returns, axis=0)    
         returns_stds = np.std(returns, axis=0)    
         step_size_means = np.mean(step_size, axis=0)    
         step_size_stds = np.std(step_size, axis=0)
 
-        return returns_means, returns_stds, step_size_means, step_size_stds
+        '''
+        for i in range(len(self.seeds)):
+            for k, key in enumerate(self.exp_results_keys):
+                result_array[i,:,k] = self.results[self.seeds[i]][key]
+                
+        # compute mean and std
+        means = np.mean(result_array, axis=0)
+        stds = np.mean(result_array, axis=0)
+        
+        return means, stds
 
     def load_results(self, result_file='./all_results.npz'):
         '''
@@ -208,6 +240,21 @@ class mult_seed_exp:
         Plots the mean and std of return and step size, averaged over the different seeds.
         '''
 
+        # get mean results
+        means, stds = self.get_mean_results()
+
+        # plot
+        for i, key in enumerate(self.exp_results_keys):
+            plt.figure()
+            plt.plot(np.arange(len(means[:,i])), means[:,i], label='mean '+key)
+            plt.fill_between(np.arange(len(means[:,i])), means[:,i]-stds[:,i], means[:,i]+stds[:,i], alpha=.5, label=r'$\pm 1\sigma$')
+            plt.xlabel('Iteration')
+            plt.ylabel(key)
+            plt.legend()
+            plt.savefig(plot_path+'avg_'+key+'.pdf')
+
+
+        '''
         # get mean results
         returns_means, returns_stds, step_size_means, step_size_stds = self.get_mean_results()
 
@@ -228,7 +275,7 @@ class mult_seed_exp:
         plt.ylabel('Step Size')
         plt.legend()
         plt.savefig(plot_path+'avg_step_size.pdf')
-        
+        '''
         
         
         

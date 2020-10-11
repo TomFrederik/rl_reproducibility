@@ -47,6 +47,61 @@ class ActorOnlyMC(TargetAlgorithm):
         return get_returns(rewards, masks, self.gamma)
 
 
+class GAE(TargetAlgorithm):
+    '''
+    Computes GAE as the target
+    '''
+
+    def __init__(self, critic, critic_optim, gamma=1, lamda=1, batch_size=16, epochs=5):
+        '''
+        Args:
+            critic: a Critic instance. critic.forward(states) should return state value estimates
+            critic_optim: an optimizer instance from torch.optim, optimizing critic's parameters
+            gamma: discount_factor
+            lamda: weighting factor for the n-step advantages
+            batch_size: batch_size to use for training the critic
+            epochs: number of epochs to train on a fixed memory
+        '''
+        super().__init__(gamma)
+        self.critic = critic
+        self.optim = critic_optim
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.lamda = lamda
+    
+    def targets(self, memory):
+        self.critic.eval()
+        (states, _, rewards, masks) = memory
+
+        targets = get_gae(states, rewards, masks, self.gamma, self.lamda, self.critic)
+
+        return targets
+
+    def train(self, memory):
+        self.critic.train()
+        (states, _, rewards, masks) = memory
+
+        returns = get_returns(rewards, masks, self.gamma)
+
+        criterion = torch.nn.MSELoss()
+        n = len(states)
+        arr = np.arange(n)
+
+        for epoch in range(self.epochs):
+            np.random.shuffle(arr)
+
+            for i in range(n // self.batch_size):
+                batch_index = arr[self.batch_size * i: self.batch_size * (i + 1)]
+                batch_index = torch.LongTensor(batch_index)
+                inputs = states.float()[batch_index]
+                target = returns.unsqueeze(1)[batch_index]
+
+                values = self.critic(inputs)
+                loss = criterion(values, target)
+                self.optim.zero_grad()
+                loss.backward()
+                self.optim.step()
+
 class BaselineCriticMC(TargetAlgorithm):
     """Baseline state value function learned by a critic is subtracted froM REINFORCE targets."""
 
@@ -197,11 +252,16 @@ class NPG(ActorAlgorithm):
         self.lr = lr
 
     def step(self, step_dir, states, *args):
+        old_actor = copy.deepcopy(self.actor)
+        
         params = utils.flat_params(self.actor)
         new_params = params + self.lr * step_dir
         utils.update_model(self.actor, new_params)
 
-        return self.lr # for consistency when monitoring step_size
+        kl = self.actor.get_kl(states.float(), old_actor=old_actor)
+        kl = kl.mean()
+
+        return {'kl':self.lr, 'step_size':self.lr, 'entropy':self.actor.get_entropy(states.float())} # return statistics
 
 
 class TRPO(ActorAlgorithm):
@@ -242,7 +302,7 @@ class TRPO(ActorAlgorithm):
             utils.update_model(self.actor, new_params)
             new_loss = self.get_loss(returns, states, actions, old_policy)
             loss_improve = new_loss - loss
-            expected_improve *= fraction
+            expected_improve *= 0.5
             kl = self.actor.get_kl(states.float(), old_actor=old_actor)
             kl = kl.mean()
 
@@ -253,7 +313,7 @@ class TRPO(ActorAlgorithm):
             # see https: // en.wikipedia.org / wiki / Backtracking_line_search
             if kl < self.max_kl and (loss_improve / expected_improve) > 0.5:
                 flag = True
-                return fraction*step_size.item() # return the step_size
+                return {'kl':kl, 'step_size':fraction*step_size.item(), 'entropy':self.actor.get_entropy(states.float())} # return statistics
                 
 
             fraction *= 0.5
@@ -310,3 +370,28 @@ def get_episode_returns(rewards, masks, gamma=1):
             returns.append(running_returns)
 
     return np.array(returns)
+
+
+def get_gae(states, rewards, masks, gamma, lamda, critic):
+    '''
+    compute GAE, given a critic and memory of states, rewards, masks
+    '''
+
+    # estimate values for all states
+    value_estimates = critic(states.float())
+    
+    A = torch.zeros(len(rewards))
+
+    for t in reversed(range(0, len(rewards))):
+        if not masks[t]:
+            # we are at the end of an episode
+            delta_t = rewards[t] - value_estimates[t]
+            A[t] = delta_t
+        else:
+            delta_t = rewards[t] + gamma * value_estimates[t+1] - value_estimates[t]
+            A[t] = delta_t + gamma * lamda * A[t+1]
+    
+    return A
+
+
+

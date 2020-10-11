@@ -125,6 +125,21 @@ class Actor(nn.Module):
 
         return kl
 
+    def get_entropy(self, states):
+        '''
+        Computes the mean entropy of the policy over the given states
+        '''
+        # compute parameters for all states
+        params = self.forward(states)
+
+        # get dists for all states
+        dists = self.get_dist(params)
+
+        # compute entropy
+        entropy = dists.entropy()
+        entropy = entropy.mean()
+
+        return entropy
 
 class DummyCont(Actor):
     '''
