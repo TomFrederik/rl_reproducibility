@@ -30,6 +30,8 @@ class Critic(nn.Module):
         v = self.fc3(x)
         return v
 
+
+
 class ContActor(Actor):
     '''
     Actor for continous action space
@@ -47,6 +49,9 @@ class ContActor(Actor):
             for i in range(len(layers)):
                 nn.init.xavier_uniform_(layers[i].weight, gain=gains[i])
                 layers[i].bias.data.fill_(0.01)
+            
+            
+            #self.log_var = nn.parameter.Parameter(data=torch.Tensor([0]), requires_grad=True)
 
     # override the parent class' forward method
     def forward(self, states):
@@ -63,18 +68,20 @@ class ContActor(Actor):
         params = self.fc3(x)
 
         params[:,1] = torch.exp(params[:,1]) # make sure variance is positive
-        
+        #var = torch.exp(self.log_var)
+        #params = torch.cat((params, torch.ones_like(params) * var), dim=1)
+
         return params
 
 # run a single experiment
 
 ####
 # dont change these params:
-ac_kwargs = {'num_hidden':20}
+ac_kwargs = {'num_hidden':64}
 critic_kwargs = {'num_hidden':20}
 critic_optim_kwargs = {'lr':3e-4}
-target_alg_kwargs = {'batch_size':16, 'epochs':5}
-num_iters = 10
+target_alg_kwargs = {'batch_size':32, 'epochs':1}
+num_iters = 100
 seeds = [42,11,23] # subject to change
 log_dir = './mc_cont/trpo/GAE/'
 try:
@@ -90,9 +97,9 @@ except:
 
 ####
 # do change these params:
-target_alg_kwargs['gamma'] = 1
-target_alg_kwargs['lamda'] = 0.9
-ep_per_iter = 5
+target_alg_kwargs['gamma'] = 0.99
+target_alg_kwargs['lamda'] = 0.97
+ep_per_iter = 1
 ac_alg_kwargs = {'max_kl':0.01}
 ####
 
@@ -120,8 +127,8 @@ experiment_parameters =   {'seed':42,
 #low = -1
 #high = 1.5
 #num_trials = 4 # how many draws we are taking
-low=0
-high = 0
+low=-2
+high = -2
 num_trials = 1
 
 search_time = time()
@@ -134,7 +141,7 @@ for n in range(num_trials):
     trial_time = time()
 
     # draw a sample from the loguniform distribution
-    max_kl = 10 ** (np.random.uniform(low, high))
+    max_kl = 5 * 10 ** (np.random.uniform(low, high))
 
     kl_list.append(max_kl)
 

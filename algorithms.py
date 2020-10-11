@@ -196,9 +196,9 @@ class ActorAlgorithm:
 
         # ----------------------------
         # step 4: get step direction and step size and update actor
-        step_size = self.step(step_dir, states, actions, returns, loss, loss_grad)
+        results = self.step(step_dir, states, actions, returns, loss, loss_grad)
 
-        return step_size
+        return results
 
     # Remaining functions aren't needed externally, only used inside this class
     def step(self, step_dir, states, *args):

@@ -91,7 +91,7 @@ except:
 ####
 # do change these params:
 target_alg_kwargs['gamma'] = 0.98
-ep_per_iter = 30
+ep_per_iter = 5
 ac_alg_kwargs = {'max_kl':0.01}
 ####
 

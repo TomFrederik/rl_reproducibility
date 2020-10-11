@@ -27,7 +27,7 @@ def sample_memory(env, actor, num_episodes, render=False):
     memory = []
 
     # is the action space continuous?
-    if type(env.action_space) == gym.spaces.box.Box:
+    if (type(env.action_space) == gym.spaces.box.Box):
         cont = True
     else:
         cont = False
@@ -38,6 +38,7 @@ def sample_memory(env, actor, num_episodes, render=False):
         while not done:
             # not entirely sure what this does, I think it normalizes and clips the state values?
             #state = running_state(state)
+        
             action = actor.sample_action(torch.Tensor(state).unsqueeze(0)).item()
 
             # continuous action spaces expect a list 
