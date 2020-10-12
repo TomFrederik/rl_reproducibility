@@ -37,6 +37,8 @@ class Experiment:
         self.env = gym.make(env_str)
         self.env.seed(self.seed)
 
+        torch.manual_seed(self.seed)
+
         # set up actor and target / critic
         self.actor = ac(num_input=self.env.observation_space.shape[0],
                         # continuous action spaces don't have n attribute,

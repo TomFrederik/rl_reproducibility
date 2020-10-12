@@ -52,13 +52,13 @@ experiment_parameters =   {'seed':42,
                            'ep_per_iter':5,
                            'log_file':'./demo/single/log.npz'}
 
-
+'''
 experiment = Experiment(**experiment_parameters)
 
 experiment.run()
 
 experiment.plot('./demo/single/plots/')
-
+'''
 
 # run mutliple experiments with different seeds
 seeds = [42,11,23,58]
