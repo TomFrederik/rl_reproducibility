@@ -80,7 +80,7 @@ class ContActor(Actor):
 ac_kwargs = {'num_hidden':64}
 critic_kwargs = {'num_hidden':20}
 critic_optim_kwargs = {'lr':3e-4}
-target_alg_kwargs = {'batch_size':32, 'epochs':1}
+target_alg_kwargs = {'batch_size':16, 'epochs':3}
 num_iters = 100
 seeds = [42,11,23] # subject to change
 log_dir = './mc_cont/trpo/GAE/'

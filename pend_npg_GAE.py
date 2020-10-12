@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 from actor import Actor
-from algorithms import BaselineCriticMC, ActorOnlyMC, NPG, TRPO, get_returns
+from algorithms import GAE, ActorOnlyMC, NPG, get_returns
 from utils import sample_memory
 import gym
 from experiment_class import Experiment, mult_seed_exp
@@ -30,6 +30,8 @@ class Critic(nn.Module):
         v = self.fc3(x)
         return v
 
+
+
 class ContActor(Actor):
     '''
     Actor for continous action space
@@ -47,6 +49,9 @@ class ContActor(Actor):
             for i in range(len(layers)):
                 nn.init.xavier_uniform_(layers[i].weight, gain=gains[i])
                 layers[i].bias.data.fill_(0.01)
+            
+            
+            #self.log_var = nn.parameter.Parameter(data=torch.Tensor([0]), requires_grad=True)
 
     # override the parent class' forward method
     def forward(self, states):
@@ -63,22 +68,28 @@ class ContActor(Actor):
         params = self.fc3(x)
 
         params[:,1] = torch.exp(params[:,1]) # make sure variance is positive
-        
+        #var = torch.exp(self.log_var)
+        #params = torch.cat((params, torch.ones_like(params) * var), dim=1)
+
         return params
 
 # run a single experiment
 
 ####
 # dont change these params:
-ac_kwargs = {'num_hidden':20}
-critic_kwargs = {'num_hidden':20}
+ac_kwargs = {'num_hidden':64}
+critic_kwargs = {'num_hidden':64}
 critic_optim_kwargs = {'lr':3e-4}
-target_alg_kwargs = {'batch_size':16, 'epochs':5}
-num_iters = 20
-seeds = [42,11] # subject to change
-log_dir = './mc_cont/NPG/BaselineCriticMC/'
+target_alg_kwargs = {'batch_size':16, 'epochs':3}
+num_iters = 200
+seeds = [0,1,2,3]#,4,5,6,7,8,9] # subject to change
+log_dir = './pendulum/npg/GAE/'
 try:
     os.mkdir(log_dir)
+except:
+    pass
+try:
+    os.mkdir(log_dir+'plots/')
 except:
     pass
 
@@ -86,18 +97,20 @@ except:
 
 ####
 # do change these params:
-target_alg_kwargs['gamma'] = 0.98
+target_alg_kwargs['gamma'] = 0.8
+target_alg_kwargs['lamda'] = 0.97
 ep_per_iter = 5
-ac_alg_kwargs = {'max_kl':0.01}
+ac_alg_kwargs = {'lr':0.001}
+lr_list = [0.001]
 ####
 
 experiment_parameters =   {'seed':42, 
-                           'env_str':'MountainCarContinuous-v0',
+                           'env_str':'Pendulum-v0',
                            'ac':ContActor,
                            'ac_kwargs':ac_kwargs,
                            'ac_alg':NPG,
                            'ac_alg_kwargs':ac_alg_kwargs,
-                           'target_alg':BaselineCriticMC,
+                           'target_alg':GAE,
                            'target_alg_kwargs':target_alg_kwargs,
                            'critic':Critic,
                            'critic_kwargs':critic_kwargs,
@@ -105,63 +118,59 @@ experiment_parameters =   {'seed':42,
                            'critic_optim_kwargs':critic_optim_kwargs,
                            'num_iters':num_iters,
                            'ep_per_iter':ep_per_iter,
-                           'log_file':'./mc_cont/NPG/BaselineCriticMC/single.npz'}
+                           'log_file':'./pendulum/npg/GAE/single.npz'}
 
 
-###
-# set up search space for max_kl
-# we are setting up a log-normal distribution
-###
-low = -4
-high = 2
-num_trials = 3 # how many draws we are taking
 
 
 search_time = time()
 max_return = -np.inf
-kl_return_list = []
-kl_return_std_list = []
-kl_list = []
-for n in range(num_trials):
+lr_return_list = []
+lr_return_std_list = []
+
+for n in range(len(lr_list)):
 
     trial_time = time()
 
     # draw a sample from the loguniform distribution
-    max_kl = 10 ** (np.random.uniform(low, high))
+    lr =  lr_list[n]
 
-    kl_list.append(max_kl)
-
-    print('\nNow running wiht max_kl = {}'.format(max_kl))
+    print('\nNow running wiht lr = {}'.format(lr))
     
     # set up experiment
-    ac_alg_kwargs['max_kl'] = max_kl
+    ac_alg_kwargs['lr'] = lr
     experiment_parameters['ac_alg_kwargs'] = ac_alg_kwargs
-    trial_log_dir = log_dir + 'kl_{0:1.4f}/'.format(max_kl)
+    trial_log_dir = log_dir + 'lr_{0:1.4f}/'.format(lr)
     try:
         os.mkdir(trial_log_dir)
         os.mkdir(trial_log_dir+'plots/')
     except:
         pass
 
-    experiment = Experiment(**experiment_parameters)
+    #experiment = Experiment(**experiment_parameters)
 
     # run mutliple experiments with different seeds
     mult_exp = mult_seed_exp(experiment_parameters, seeds, trial_log_dir)
     mult_exp.run()
 
+    try:
+        mult_exp.plot(trial_log_dir+'plots/')
+    except:
+        pass
+
     # get results
-    mean_returns, std_returns, _, _ = mult_exp.get_mean_results()
+    mean_results, std_results = mult_exp.get_mean_results()
 
-    print('Mean return at termination with max_kl {0:1.5f} was {1:1.2f}'.format(max_kl, mean_returns[-1]))
+    print('Mean return at termination with lr {0:1.5f} was {1:1.2f}'.format(lr, mean_results[-1,0]))
 
-    kl_return_list.append(mean_returns[-1])
-    kl_return_std_list.append(std_returns[-1])
+    lr_return_list.append(mean_results[-1,0])
+    lr_return_std_list.append(std_results[-1,0])
 
-    if mean_returns[-1]>max_return:
+    if mean_results[1,0]>max_return:
         print('Updating max return run..')
-        max_return = mean_returns[-1]
+        max_return = mean_results[-1,0]
 
-        mult_exp.plot(trial_log_dir+ 'plots/best_run_')
+        mult_exp.plot(log_dir+ 'plots/best_run_')
     #mult_exp.plot(plot_path=log_dir+'plots/')
 
     print('This trial took {0:1.2f} seconds'.format((time()-trial_time)))
@@ -171,13 +180,14 @@ print('Hyperparameter search finished. Time: {0:1.0f} minutes and {1:1.2f} secon
 print('Plotting Return - KL diagram')
 
 plt.figure()
-plt.errorbar(kl_list, kl_return_list, yerr=kl_return_std_list, fmt='o', capsize=6)
-plt.xlabel('max KL')
-plt.ylabel('Final Return')
-plt.savefig(log_dir + 'kl_return_plot.pdf')
+plt.errorbar(lr_list, lr_return_list, yerr=lr_return_std_list, fmt='o', capsize=6)
+plt.xlabel('lr')
+plt.ylabel('Log Final Return')
+#plt.yscale('log')
+plt.savefig(log_dir + 'plots/lr_return_plot.pdf')
 
 # save results
-np.savez_compressed(log_dir + 'kl_return_summary.npz', kl_list=kl_list, kl_return_list=kl_return_list, kl_return_std_list=kl_return_std_list)
+np.savez_compressed(log_dir + 'kl_return_summary.npz', lr_list=lr_list, lr_return_list=lr_return_list, lr_return_std_list=lr_return_std_list)
 
 #def run_loguniform_hp_search(low, high, num_trials, keyword, params):
 #    '''
