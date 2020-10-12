@@ -70,8 +70,10 @@ class Experiment:
         '''
         #TODO: log more metrics?
 
-        # make sure torch is seeded correctly
+        # make sure torch and numpy are seeded correctly
         torch.manual_seed(self.seed)
+        np.random.seed(self.seed)
+
 
         # run training
         for i in range(self.num_iters):
@@ -178,7 +180,7 @@ class mult_seed_exp:
 
             # set up new experiment
             exp = Experiment(**self.experiment_parameters)
-            
+
             # run experiment
             exp.run()
 
