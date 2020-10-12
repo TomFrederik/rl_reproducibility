@@ -323,7 +323,7 @@ class TRPO(ActorAlgorithm):
             utils.update_model(self.actor, params)
             print('policy update does not impove the surrogate')
 
-            return 0
+            return {'kl': 0, 'step_size': 0, 'entropy':self.actor.get_entropy(states.float())} # return statistics
 
 
 def get_returns(rewards, masks, gamma=1):
