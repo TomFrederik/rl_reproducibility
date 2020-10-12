@@ -261,7 +261,7 @@ class NPG(ActorAlgorithm):
         kl = self.actor.get_kl(states.float(), old_actor=old_actor)
         kl = kl.mean()
 
-        return {'kl':self.lr, 'step_size':self.lr, 'entropy':self.actor.get_entropy(states.float())} # return statistics
+        return {'kl':kl, 'step_size':self.lr, 'entropy':self.actor.get_entropy(states.float())} # return statistics
 
 
 class TRPO(ActorAlgorithm):
