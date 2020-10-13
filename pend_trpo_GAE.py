@@ -158,7 +158,7 @@ for n in range(len(kl_list)):
     #experiment = Experiment(**experiment_parameters)
 
     # run mutliple experiments with different seeds
-    mult_exp = mult_seed_exp(experiment_parameters, seeds, trial_log_dir)
+    mult_exp = mult_seed_exp(experiment_parameters, seeds, trial_log_dir, save_all=False)
     mult_exp.run()
 
     try:

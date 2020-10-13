@@ -155,16 +155,18 @@ class Experiment:
 
 class mult_seed_exp:
 
-    def __init__(self, experiment_parameters, seeds, log_dir='./'):
+    def __init__(self, experiment_parameters, seeds, log_dir='./', save_all=True):
         '''
         Args:
             experiment_parameters - dict, parameters for the experiment
             seeds - list or ndarray, seeds you want to run the experiment on
             log_dir - str, top-level dir for saving the results for this set of experiment
+            save_all - bool, whether to save results for all seeds. Turn off if running OOM.
         '''
         self.experiment_parameters = experiment_parameters
         self.seeds = seeds
         self.log_dir = log_dir
+        self.save_all = save_all
     
         # for logging
         self.results = {}
@@ -189,11 +191,12 @@ class mult_seed_exp:
 
             self.exp_results_keys = exp.results.keys()
         
-        # save results
-        result_kwargs = {}
-        for seed in self.seeds:
-            result_kwargs[str(seed)] = self.results[seed]
-        np.savez_compressed(self.log_dir + 'all_results.npz', **result_kwargs)
+        if self.save_all:
+            # save results
+            result_kwargs = {}
+            for seed in self.seeds:
+                result_kwargs[str(seed)] = self.results[seed]
+            np.savez_compressed(self.log_dir + 'all_results.npz', **result_kwargs)
 
 
     def get_mean_results(self):
@@ -201,6 +204,10 @@ class mult_seed_exp:
         Returns the averaged results of all seed runs
         Use this method if you want to plot experiments with different parameters in one plot.
         '''
+
+        if self.save_all == False:
+            print('WARNING: save_all is turned off. It might be impossible to access all results via this method')
+
         # put everything in one array
         result_array = np.zeros((len(self.seeds), self.experiment_parameters['num_iters'], len(self.exp_results_keys)))
         
