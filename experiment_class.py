@@ -186,13 +186,12 @@ class mult_seed_exp:
             # run experiment
             exp.run()
 
-            # store results
-            self.results[self.seeds[i]] = exp.results
-
             self.exp_results_keys = exp.results.keys()
         
         if self.save_all:
-            # save results
+            # store results
+            self.results[self.seeds[i]] = exp.results
+
             result_kwargs = {}
             for seed in self.seeds:
                 result_kwargs[str(seed)] = self.results[seed]

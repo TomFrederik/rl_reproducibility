@@ -82,7 +82,7 @@ critic_kwargs = {'num_hidden':64}
 critic_optim_kwargs = {'lr':3e-4}
 target_alg_kwargs = {'batch_size':16, 'epochs':3}
 num_iters = 200
-seeds = [0,1,2,3]#,4,5,6,7,8,9] # subject to change
+seeds = [3,4,5,6,7,8,9] #[0,1,2] subject to change
 log_dir = './pendulum/trpo/GAE/'
 try:
     os.mkdir(log_dir)
@@ -148,7 +148,7 @@ for n in range(len(kl_list)):
     # set up experiment
     ac_alg_kwargs['max_kl'] = max_kl
     experiment_parameters['ac_alg_kwargs'] = ac_alg_kwargs
-    trial_log_dir = log_dir + 'kl_{0:1.4f}/'.format(max_kl)
+    trial_log_dir = log_dir + 'kl_{0:1.3f}_gam_{1:1.1f}_lam_{2:1.2f}/'.format(max_kl, target_alg_kwargs['gamma'], target_alg_kwargs['lamda'])
     try:
         os.mkdir(trial_log_dir)
         os.mkdir(trial_log_dir+'plots/')
