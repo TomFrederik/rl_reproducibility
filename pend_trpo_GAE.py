@@ -82,7 +82,7 @@ critic_kwargs = {'num_hidden':64}
 critic_optim_kwargs = {'lr':3e-4}
 target_alg_kwargs = {'batch_size':16, 'epochs':3}
 num_iters = 200
-seeds = [3,4,5,6,7,8,9] #[0,1,2] subject to change
+seeds = [0,1,2,3,4,5,6,7,8,9] #[0,1,2] subject to change
 log_dir = './pendulum/trpo/GAE/'
 try:
     os.mkdir(log_dir)
@@ -98,7 +98,7 @@ except:
 ####
 # do change these params:
 target_alg_kwargs['gamma'] = 0.9
-target_alg_kwargs['lamda'] = 0.97
+target_alg_kwargs['lamda'] = 0.2
 ep_per_iter = 5
 ac_alg_kwargs = {'max_kl':0.01}
 ####

@@ -107,7 +107,7 @@ class Experiment:
 
 
         # save results
-        np.savez_compressed(self.log_file, returns=self.results['returns'], step_size=self.results['step_size'])
+        np.savez_compressed(self.log_file, **self.results)
 
 
 
