@@ -6,11 +6,11 @@ import os
 def get_params(folder):
 
     folder = folder[2:-1] # drop slashes
-    kl = folder[3:7]
-    gamma = folder[13:17]
-    lamda = folder[22:]
+    lr = folder[3:7]
+    gamma = folder[14:18]
+    lamda = folder[23:]
 
-    return kl, gamma, lamda
+    return lr, gamma, lamda
 
 def get_returns(folder):
     '''
@@ -55,25 +55,24 @@ plt.figure(1) # gamma = 0.9
 
 for i, param_dir in enumerate(dirs):
     # get params of this run
-    kl, gamma, lamda = get_params(param_dir)
+    lr, gamma, lamda = get_params(param_dir)
     # get mean and std of return, averaged over seeds
     mean_return, std_return = get_returns(param_dir)
 
-    if (gamma == '0.90'):
-        plt.plot(np.arange(len(mean_return)), mean_return, label=r'$\lambda$ = '+lamda)
+    plt.plot(np.arange(len(mean_return)), mean_return, label='lr='+lr+r'; $\gamma$='+gamma)
 
     #plt.fill_between(np.arange(len(mean_return)), mean_return-std_return, mean_return+std_return, alpha=.3)
 
 
-plt.title(r'kl 0.01 ; mean return ; $\gamma$=0.9')
+plt.title(r'mean return; $\lambda$=0.97')
 plt.xlabel('Iteration')
 plt.ylabel('Return')
 plt.legend()
-plt.savefig(plot_dir+'comparison_lambda_return.pdf')
+plt.savefig(plot_dir+'comparison_lr_return.pdf')
 
 
 
-
+'''
 plt.figure(2) # lambda = 1
 
 for i, param_dir in enumerate(dirs):
@@ -92,6 +91,6 @@ plt.xlabel('Iteration')
 plt.ylabel('Return')
 plt.legend()
 plt.savefig(plot_dir+'comparison_gamma_return.pdf')
-
+'''
 
     

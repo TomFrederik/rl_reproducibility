@@ -97,7 +97,7 @@ class GAE(TargetAlgorithm):
                 target = returns.unsqueeze(1)[batch_index]
 
                 values = self.critic(inputs)
-                loss = criterion(values, target)
+                loss = criterion(values, target).float()
                 self.optim.zero_grad()
                 loss.backward()
                 self.optim.step()

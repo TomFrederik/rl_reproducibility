@@ -82,7 +82,7 @@ critic_kwargs = {'num_hidden':64}
 critic_optim_kwargs = {'lr':3e-4}
 target_alg_kwargs = {'batch_size':16, 'epochs':3}
 num_iters = 200
-seeds = [0,1,2,3]#,4,5,6,7,8,9] # subject to change
+seeds = [0,1,2,3,4,5,6,7,8,9] # subject to change
 log_dir = './pendulum/npg/GAE/'
 try:
     os.mkdir(log_dir)
@@ -100,8 +100,8 @@ except:
 target_alg_kwargs['gamma'] = 0.8
 target_alg_kwargs['lamda'] = 0.97
 ep_per_iter = 5
-ac_alg_kwargs = {'lr':0.001}
-lr_list = [0.001]
+ac_alg_kwargs = {'lr':0.1}
+lr_list = [0.1]
 ####
 
 experiment_parameters =   {'seed':42, 
@@ -140,7 +140,7 @@ for n in range(len(lr_list)):
     # set up experiment
     ac_alg_kwargs['lr'] = lr
     experiment_parameters['ac_alg_kwargs'] = ac_alg_kwargs
-    trial_log_dir = log_dir + 'lr_{0:1.4f}/'.format(lr)
+    trial_log_dir = log_dir + 'lr_{0:1.4f}_gam_{1:1.2f}_lam_{2:1.2f}/'.format(lr, target_alg_kwargs['gamma'], target_alg_kwargs['lamda'])
     try:
         os.mkdir(trial_log_dir)
         os.mkdir(trial_log_dir+'plots/')
@@ -150,7 +150,7 @@ for n in range(len(lr_list)):
     #experiment = Experiment(**experiment_parameters)
 
     # run mutliple experiments with different seeds
-    mult_exp = mult_seed_exp(experiment_parameters, seeds, trial_log_dir)
+    mult_exp = mult_seed_exp(experiment_parameters, seeds, trial_log_dir, save_all=False)
     mult_exp.run()
 
     try:

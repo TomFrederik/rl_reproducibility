@@ -98,7 +98,7 @@ except:
 ####
 # do change these params:
 target_alg_kwargs['gamma'] = 0.9
-target_alg_kwargs['lamda'] = 0.2
+target_alg_kwargs['lamda'] = 0.1
 ep_per_iter = 5
 ac_alg_kwargs = {'max_kl':0.01}
 ####
@@ -148,7 +148,7 @@ for n in range(len(kl_list)):
     # set up experiment
     ac_alg_kwargs['max_kl'] = max_kl
     experiment_parameters['ac_alg_kwargs'] = ac_alg_kwargs
-    trial_log_dir = log_dir + 'kl_{0:1.3f}_gam_{1:1.1f}_lam_{2:1.2f}/'.format(max_kl, target_alg_kwargs['gamma'], target_alg_kwargs['lamda'])
+    trial_log_dir = log_dir + 'kl_{0:1.3f}_gam_{1:1.2f}_lam_{2:1.2f}/'.format(max_kl, target_alg_kwargs['gamma'], target_alg_kwargs['lamda'])
     try:
         os.mkdir(trial_log_dir)
         os.mkdir(trial_log_dir+'plots/')
