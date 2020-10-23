@@ -88,14 +88,14 @@ all_ac_alg_kwargs = {
 all_cvs = {}
 means = {}
 
-seeds = [10,11,12,13,14]
+seeds = [10,11,12,13,14,15,16,17,18,19]
 
 env_str = "Pendulum-v0"
 
 for alg in [NPG, TRPO]:
     cvs = []
-    os.makedirs("kl/logs/{}/{}".format(env_str, alg.__name__), exist_ok=True)
-    os.makedirs("kl/plots/{}".format(env_str), exist_ok=True)
+    os.makedirs("kl/logs/{}/long/{}".format(env_str, alg.__name__), exist_ok=True)
+    os.makedirs("kl/plots/{}/long/".format(env_str), exist_ok=True)
 
     plt.figure()
     for i, seed in enumerate(seeds):
@@ -116,9 +116,9 @@ for alg in [NPG, TRPO]:
                                  'critic_kwargs': critic_kwargs,
                                  'critic_optim': torch.optim.Adam,
                                  'critic_optim_kwargs': critic_optim_kwargs,
-                                 'num_iters': 200,
+                                 'num_iters': 400,
                                  'ep_per_iter': 5,
-                                 'log_file': './kl/logs/{}/{}/{}_log.npz'.format(env_str, alg.__name__, seed)}
+                                 'log_file': './kl/logs/{}/long/{}/{}_log.npz'.format(env_str, alg.__name__, seed)}
 
         experiment = Experiment(**experiment_parameters)
 
@@ -141,7 +141,7 @@ for alg in [NPG, TRPO]:
     all_cvs[alg] = cvs
     plt.xlabel("Iteration")
     plt.ylabel("KL update")
-    plt.savefig("kl/plots/{}/{}.pdf".format(env_str, alg.__name__))
+    plt.savefig("kl/plots/{}/long/{}.pdf".format(env_str, alg.__name__))
 
 plt.figure()
 # for i, alg in enumerate([NPG, TRPO]):
@@ -154,4 +154,4 @@ plt.figure()
 #     plt.scatter(i, means[alg], color="blue", s=16)
 plt.boxplot(all_cvs.values(), labels=[x.__name__ for x in all_cvs])
 plt.ylabel("Coefficient of variation σ/μ")
-plt.savefig("kl/plots/{}/cvs.pdf".format(env_str))
+plt.savefig("kl/plots/{}/long/cvs.pdf".format(env_str))
